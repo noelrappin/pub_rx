@@ -14,4 +14,14 @@ Gem::Specification.new do |gem|
   gem.name          = "pub_rx"
   gem.require_paths = ["lib"]
   gem.version       = PubRx::VERSION
+  gem.add_dependency('coderay')
+  gem.add_dependency('rake')
+  gem.add_dependency('grit')
+  gem.add_dependency('sass')
+  gem.add_dependency('princely')
+  gem.add_dependency('watchr')
+  gem.add_development_dependency('rspec')
 end
+
+
+
