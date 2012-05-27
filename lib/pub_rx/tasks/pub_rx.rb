@@ -4,7 +4,7 @@ require_relative "../preprocessor"
 require_relative "../postprocessor"
 require_relative "../prince_post_processor"
 
-namespace :book do
+namespace :pub_rx do
 
   task :preprocess do
     Dir["text/**/*.md"].sort.each do |path|
@@ -16,6 +16,7 @@ namespace :book do
       end
     end
   end
+  
 
   task :markdownify => :preprocess do
     Dir["output/preprocessed/*.md"].sort.each do |path|
