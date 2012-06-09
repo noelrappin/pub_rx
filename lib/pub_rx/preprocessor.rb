@@ -162,8 +162,29 @@ module CodeDirective
     `#{command}`.strip
   end
 
+  def marker_match
+    "\/\/###{params[:marker]}"
+  end
+
+  def elide_match
+    "\/\/###{params[:elide]}"
+  end
+
   def display_body
-    if params[:file] then recovered_code else body end 
+    raw = if params[:file] then recovered_code else body end 
+    if params[:marker]
+      return raw.match(%r{#{marker_match}(.*)#{marker_match}}m)[1]
+    end
+    if params[:elide]
+      data = raw.match(%r{(.*)#{elide_match}(.*)#{elide_match}(.*)}m)
+      return data[1] + "..." + data[3]
+    end
+    result = []
+    raw.split("\n").each do |line|
+      next unless line
+      result << line unless line.start_with?("//##")
+    end
+    result.join("\n")
   end
 
   def language
@@ -173,6 +194,7 @@ module CodeDirective
     when "js" then :javascript
     when "html" then :html
     when "css" then :css
+    when "yaml" then :yaml
     end
   end
 
@@ -186,4 +208,17 @@ module CodeDirective
     parent.append_result(footer)
   end
 
+end
+
+module TableDirective
+
+  def process_text
+    processed_text = %{<div class="table" markdown="1">}
+    if params[:caption]
+      processed_text += %{<div class="caption">#{params[:caption]}</div>\n}
+    end
+    processed_text += "#{body}\n"
+    processed_text += %{</div>}
+    parent.append_result(processed_text)
+  end
 end

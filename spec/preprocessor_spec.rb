@@ -1,5 +1,5 @@
 require 'ostruct'
-require_relative '../lib/preprocessor'
+require_relative '../lib/pub_rx/preprocessor'
 
 class String
   def unindent 
@@ -156,15 +156,39 @@ describe Preprocessor do
     end
 
     describe CodeDirective do
-      it "calls git" do
-        dummy = OpenStruct.new(
+      let(:dummy) do 
+        OpenStruct.new(
           :parent => DummyParent.new,
           :params => {:dir => "../js", :file => "app/assets.js", 
               :branch => "master"})
-        dummy.extend(CodeDirective)
+      end
+      let(:body) { "before\n//##marker\ninside\n//##marker\nafter" }
+
+      before(:each) do
+        dummy.extend(CodeDirective) 
+      end
+
+      it "calls git" do
         dummy.command.should == 'cd ../js; git show master:app/assets.js'
         dummy.should_receive(:recovered_code).and_return("body")
         dummy.process_text
+      end
+
+      it "ignores markers" do
+        dummy.should_receive(:recovered_code).and_return(body)
+        dummy.display_body.should == "before\ninside\nafter"
+      end
+
+      it "limits to markers when asked" do
+        dummy.params[:marker] = "marker"
+        dummy.should_receive(:recovered_code).and_return(body)
+        dummy.display_body.should == "\ninside\n"
+      end
+
+      it "elides markers when asked" do
+        dummy.params[:elide] = "marker"
+        dummy.should_receive(:recovered_code).and_return(body)
+        dummy.display_body.should == "before\n...\nafter"
       end
     end
 
