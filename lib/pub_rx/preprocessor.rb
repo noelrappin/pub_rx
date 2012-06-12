@@ -177,7 +177,7 @@ module CodeDirective
     end
     if params[:elide]
       data = raw.match(%r{(.*)#{elide_match}(.*)#{elide_match}(.*)}m)
-      return data[1] + "..." + data[3]
+      return data[1] + "\n#{params[:elide_caption] || "..."}\n" + data[3]
     end
     result = []
     raw.split("\n").each do |line|
@@ -195,6 +195,8 @@ module CodeDirective
     when "html" then :html
     when "css" then :css
     when "yaml" then :yaml
+    else 
+      :text
     end
   end
 
