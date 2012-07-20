@@ -24,7 +24,7 @@ class Preprocessor
       directive = scan_directive_end(line)
       return directive == directive_name if directive
     end
-    return false  
+    return false
   end
 
   def scan_directive(line)
@@ -46,7 +46,7 @@ class Preprocessor
   end
 
   def process
-    LineProcessor.new(next_line, self).process until @input.empty? 
+    LineProcessor.new(next_line, self).process until @input.empty?
     @result.join("\n")
   end
 
@@ -108,7 +108,7 @@ class LineProcessor
     when "sidebar" then extend SidebarDirective
     when "cssidebar" then extend CoffeeScriptSidebarDirective
     when "code" then extend CodeDirective
-    else 
+    else
       extend(NilDirective)
     end
   end
@@ -130,7 +130,7 @@ module SidebarDirective
     if params[:title]
       processed_text += %{<div class="sidebar-title">#{params[:title]}</div>\n}
     end
-    divs = body.split("\n").map do |line| 
+    divs = body.split("\n").map do |line|
       %{<div class="sidebar-body" markdown="1">#{line}</div>}
     end
     processed_text += divs.join("\n")
@@ -171,7 +171,7 @@ module CodeDirective
   end
 
   def display_body
-    raw = if params[:file] then recovered_code else body end 
+    raw = if params[:file] then recovered_code else body end
     if params[:marker]
       return raw.match(%r{#{marker_match}(.*)#{marker_match}}m)[1]
     end
@@ -188,6 +188,9 @@ module CodeDirective
   end
 
   def language
+    # p display_body
+    # p "---"
+    # p params
     extension = (params[:type] || params[:file].split(".").last).strip
     case extension
     when "rb" then :ruby
@@ -195,13 +198,13 @@ module CodeDirective
     when "html" then :html
     when "css" then :css
     when "yaml" then :yaml
-    else 
+    else
       :text
     end
   end
 
   def process_text
-    header = %{<div class="code-filename">#{params[:file]}</div>}
+    header = %{<div class="code-filename">#{params[:file]} (Branch #{params[:branch]})</div>}
     processed_text = CodeRay.scan(display_body, language)
         .html(:line_numbers => :table)
     footer = %{<div class="code-caption">#{params[:caption]}</div>}

@@ -5,6 +5,7 @@ class PrincePostProcessor
   def initialize(text)
     @text = text
     @footnotes = {}
+    @counter = 0
   end
 
   def anchor_regex

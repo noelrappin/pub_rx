@@ -37,9 +37,9 @@ class Prince
   #
   def pdf_from_string(string)
     path = self.exe_path()
-    # Don't spew errors to the standard out...and set up to take IO 
+    # Don't spew errors to the standard out...and set up to take IO
     # as input and output
-    path << ' --silent - -o -'
+    path << ' --javascript --silent - -o -'
     #path << ' --no-compress --silent - -o -'
 
     # Show the command used...
