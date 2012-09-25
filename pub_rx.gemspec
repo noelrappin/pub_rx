@@ -20,6 +20,7 @@ Gem::Specification.new do |gem|
   gem.add_dependency('sass')
   gem.add_dependency('princely')
   gem.add_dependency('watchr')
+  gem.add_dependency('rubyzip')
   gem.add_development_dependency('rspec')
 end
 

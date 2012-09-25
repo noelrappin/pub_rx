@@ -4,6 +4,7 @@ require_relative "../preprocessor"
 require_relative "../postprocessor"
 require_relative "../prince_post_processor"
 require 'yaml'
+require 'zip/zip'
 
 ## x = FileList["text/**/*.md"]
 ## x.pathmap("new file pattern %n %x")  %p %f %d %x %n {^source,target}
@@ -23,6 +24,8 @@ require 'yaml'
 
 namespace :pub_rx do
 
+  TYPES = %w(pdf epub mobi)
+
   task :load do
     $settings = YAML.load_file("settings.yml")
   end
@@ -31,9 +34,19 @@ namespace :pub_rx do
     `rm output/preprocessed/*.*`
     `rm output/postprocessed/*.*`
     `rm output/converted/*.*`
+    `rm output/*.zip`
+    `rm output/images/*.png`
+    TYPES.each do |type|
+      `rm output/*.#{type}`
+    end
   end
 
-  task :preprocess => [:load, :clean] do
+  desc "copy images"
+  task :image_copy => [:clean] do
+    `cp images/*.png output/images`
+  end
+
+  task :preprocess => [:load, :clean, :image_copy] do
     Dir["text/**/*.md"].sort.each do |path|
       file_name = path.split("/")[-1]
       text = File.new(path).read
@@ -111,6 +124,17 @@ namespace :pub_rx do
     MobiConverter.new("output/index.html").convert
   end
 
-  task :ebooks => [:prince, :epub, :mobi]
+  task :ebooks => [:prince, :epub, :mobi, :zip]
+
+  task :zip do
+    zipfile = "output/#{$settings["filename"]}.zip"
+    Zip::ZipFile.open(zipfile, Zip::ZipFile::CREATE) do |zipfile|
+      TYPES.each do |type|
+        zipfile.add("#{$settings["filename"]}.#{type}",
+            "output/#{$settings["filename"]}.#{type}")
+      end
+    end
+  end
+
 
 end

@@ -198,6 +198,7 @@ module CodeDirective
     when "html" then :html
     when "css" then :css
     when "yaml" then :yaml
+    when "erb" then :erb
     else
       :text
     end
@@ -206,7 +207,7 @@ module CodeDirective
   def process_text
     header = %{<div class="code-filename">#{params[:file]} (Branch #{params[:branch]})</div>}
     processed_text = CodeRay.scan(display_body, language)
-        .html(:line_numbers => :table)
+        .div(:line_numbers => nil)
     footer = %{<div class="code-caption">#{params[:caption]}</div>}
     parent.append_result(header) if params[:file]
     parent.append_result(processed_text)
