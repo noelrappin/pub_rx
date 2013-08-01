@@ -31,11 +31,15 @@ namespace :pub_rx do
   end
 
   task :clean do
-    `rm output/preprocessed/*.*`
-    `rm output/postprocessed/*.*`
-    `rm output/converted/*.*`
+    `rm -rf output/preprocessed`
+    `rm -rf output/postprocessed`
+    `rm -rf output/converted`
     `rm output/*.zip`
-    `rm output/images/*.png`
+    `rm -rf output/images`
+    `mkdir output/preprocessed`
+    `mkdir output/postprocessed`
+    `mkdir output/converted`
+    `mkdir output/images`
     TYPES.each do |type|
       `rm output/*.#{type}`
     end
@@ -49,6 +53,9 @@ namespace :pub_rx do
   task :preprocess => [:load, :clean, :image_copy] do
     Dir["text/**/*.md"].sort.each do |path|
       file_name = path.split("/")[-1]
+      if path.split("/")[-2] != "text"
+        file_name = "#{path.split("/")[-2]}_#{file_name}"
+      end
       text = File.new(path).read
       text = Preprocessor.new(text).process
       File.open("output/preprocessed/#{file_name}", 'w') do |f|
@@ -73,7 +80,7 @@ namespace :pub_rx do
     Dir["output/converted/*.html"].sort.each do |path|
       file_name = path.split("/")[-1]
       text = File.new(path).read
-      marker = file_name.split("_")[0]
+      marker = file_name.split("_").select { |segment| segment.match(/\d+/) }.join("_")
       text = Postprocessor.new(text, marker).process
       File.open("output/postprocessed/#{file_name}", 'w') do |f|
         f << text
@@ -127,7 +134,7 @@ namespace :pub_rx do
   task :ebooks => [:prince, :epub, :mobi, :zip]
 
   task :zip do
-    zipfile = "output/#{$settings["filename"]}.zip"
+    zipfile = "output/#{$settings["filename"]}_#{$settings["version"]}.zip"
     Zip::ZipFile.open(zipfile, Zip::ZipFile::CREATE) do |zipfile|
       TYPES.each do |type|
         zipfile.add("#{$settings["filename"]}.#{type}",

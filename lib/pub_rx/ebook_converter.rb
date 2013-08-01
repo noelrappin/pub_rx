@@ -17,6 +17,7 @@ class EbookConverter
     command = "ebook-convert #{input_file} #{input_dir}/#{@file_stem}.#{format}"
     switches.each do |key, value|
       next if key == "filename"
+      next if key == "version"
       command << " --#{key}"
       command << " '#{value}'" if value
     end

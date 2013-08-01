@@ -97,7 +97,15 @@ class LineProcessor
     (class << self; self end).included_modules
   end
 
+  def fix_ulysses_weirdness
+    @body.gsub!(%r{^!\\\[}, "![")
+    @body.gsub!(%r{^\\\[}, "[")
+    @body.gsub!(%r{^\\\[}, "[")
+    @body.gsub!("\\_", "_")
+  end
+
   def process
+    fix_ulysses_weirdness
     scan
     extend_module
     process_text
@@ -163,17 +171,38 @@ module CodeDirective
   end
 
   def marker_match
-    "\/\/###{params[:marker]}"
+    case language
+    when :ruby then "###{params[:marker]}"
+    else
+      "\/\/###{params[:marker]}"
+    end
   end
 
   def elide_match
     "\/\/###{params[:elide]}"
   end
 
+  def fix_ulysses_weirdness(result)
+    result.gsub!(%r{^!\\\[}, "![")
+    result.gsub!(%r{^\\\[}, "[")
+    result.gsub!(%r{^\\\[}, "[")
+    result.gsub!(%r{\\\[}, "[")
+    result.gsub!(%r{\\<}, "<")
+    result.gsub!(%r{\\>}, ">")
+    result.gsub!("\\_", "_")
+    result
+  end
+
   def display_body
     raw = if params[:file] then recovered_code else body end
     if params[:marker]
-      return raw.match(%r{#{marker_match}(.*)#{marker_match}}m)[1]
+      match = raw.match(%r{#{marker_match}(.*)#{marker_match}}m)
+      if match
+        return match[1]
+      else
+        p raw
+        raise Exception, "Unknown marker #{params[:file]}  #{params[:branch]} #{params[:marker]}"
+      end
     end
     if params[:elide]
       data = raw.match(%r{(.*)#{elide_match}(.*)#{elide_match}(.*)}m)
@@ -182,20 +211,22 @@ module CodeDirective
     result = []
     raw.split("\n").each do |line|
       next unless line
+      line = fix_ulysses_weirdness(line)
       result << line unless line.start_with?("//##")
     end
     result.join("\n")
+
   end
 
   def language
     # p display_body
     # p "---"
-    # p params
+    #p params
     extension = (params[:type] || params[:file].split(".").last).strip
     case extension
-    when "rb" then :ruby
+    when "rb", "ruby" then :ruby
     when "js" then :javascript
-    when "html" then :html
+    when "html", "mustache", "handlebars" then :html
     when "css" then :css
     when "yaml" then :yaml
     when "erb" then :erb
@@ -205,7 +236,8 @@ module CodeDirective
   end
 
   def process_text
-    header = %{<div class="code-filename">#{params[:file]} (Branch #{params[:branch]})</div>}
+    header = %{<div class="code-filename">#{params[:file]} (Branch: #{params[:branch]})</div>}
+    header = header.gsub("\\_", "_")
     processed_text = CodeRay.scan(display_body, language)
         .div(:line_numbers => nil)
     footer = %{<div class="code-caption">#{params[:caption]}</div>}
