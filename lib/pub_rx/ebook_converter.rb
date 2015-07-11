@@ -5,7 +5,8 @@ class EbookConverter
   def initialize(input_file, format)
     @input_file = input_file
     @format = format
-    @switches = $settings
+    @switches = $settings.dup
+    @switches.delete("code_dir")
     @file_stem = @switches["filename"]
   end
 

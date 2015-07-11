@@ -4,7 +4,7 @@ require_relative "../preprocessor"
 require_relative "../postprocessor"
 require_relative "../prince_post_processor"
 require 'yaml'
-require 'zip/zip'
+require 'zip'
 
 ## x = FileList["text/**/*.md"]
 ## x.pathmap("new file pattern %n %x")  %p %f %d %x %n {^source,target}
@@ -51,17 +51,7 @@ namespace :pub_rx do
   end
 
   task :preprocess => [:load, :clean, :image_copy] do
-    Dir["text/**/*.md"].sort.each do |path|
-      file_name = path.split("/")[-1]
-      if path.split("/")[-2] != "text"
-        file_name = "#{path.split("/")[-2]}_#{file_name}"
-      end
-      text = File.new(path).read
-      text = Preprocessor.new(text).process
-      File.open("output/preprocessed/#{file_name}", 'w') do |f|
-        f << text
-      end
-    end
+    Preprocessor.process_directory("text/**/*.md")
   end
 
 
@@ -135,7 +125,7 @@ namespace :pub_rx do
 
   task :zip do
     zipfile = "output/#{$settings["filename"]}_#{$settings["version"]}.zip"
-    Zip::ZipFile.open(zipfile, Zip::ZipFile::CREATE) do |zipfile|
+    Zip::File.open(zipfile, Zip::File::CREATE) do |zipfile|
       TYPES.each do |type|
         zipfile.add("#{$settings["filename"]}.#{type}",
             "output/#{$settings["filename"]}.#{type}")

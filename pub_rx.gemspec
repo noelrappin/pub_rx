@@ -15,6 +15,7 @@ Gem::Specification.new do |gem|
   gem.require_paths = ["lib"]
   gem.version       = PubRx::VERSION
   gem.add_dependency('coderay')
+  gem.add_dependency('pygments.rb')
   gem.add_dependency('rake')
   gem.add_dependency('grit')
   gem.add_dependency('sass')

@@ -1,8 +1,29 @@
 require 'coderay'
+require 'pygments'
 
 class Preprocessor
 
   attr_accessor :text, :input
+
+  def self.process_directory(pattern, subdir="")
+    Dir[pattern].sort.each do |path|
+      process_file(path, subdir)
+    end
+  end
+
+  def self.process_file(path, subdir="")
+    file_name = path.split("/")[-1]
+    if path.split("/")[-2] != "text"
+      file_name = "#{path.split("/")[-2]}_#{file_name}".gsub(" ", "-")
+    else
+      file_name = file_name.gsub(" ", "-")
+    end
+    text = File.new(path).read
+    text = Preprocessor.new(text).process
+    File.open("output/#{subdir}/preprocessed/#{file_name}", 'w') do |f|
+      f << text
+    end
+  end
 
   def initialize(text)
     @text = text
@@ -102,6 +123,7 @@ class LineProcessor
     @body.gsub!(%r{^\\\[}, "[")
     @body.gsub!(%r{^\\\[}, "[")
     @body.gsub!("\\_", "_")
+    @body.gsub!("\\\{", "{")
   end
 
   def process
@@ -116,6 +138,15 @@ class LineProcessor
     when "sidebar" then extend SidebarDirective
     when "cssidebar" then extend CoffeeScriptSidebarDirective
     when "code" then extend CodeDirective
+    when "trust" then extend TrustDirective
+    when "author" then extend AuthorDirective
+    when "deprecation" then extend DeprecationDirective
+    when "proptip" then extend ProtipDirective
+    when "kansas" then extend KansasDirective
+    when "definition" then extend DefinitionDirective
+    when "zen" then extend ZenDirective
+    when "letter" then extend LetterDirective
+    when "inthis" then extend InThisDirective
     else
       extend(NilDirective)
     end
@@ -147,6 +178,140 @@ module SidebarDirective
   end
 end
 
+module LetterDirective
+  def process_text
+    processed_text = %{<div class="letter" markdown="1">\n}
+    processed_text += %{<blockquote>}
+    divs = body.split("\n").map do |line|
+      %{<div class="letter-body" markdown="1">#{line}</div>}
+    end
+    processed_text += divs.join("\n")
+    processed_text += %{</blockquote>}
+    processed_text += %{</div>}
+    parent.append_result(processed_text)
+  end
+end
+
+module InterpolationDirective
+
+  def body_div
+    body.split("\n").map do |line|
+      %{<div class="#{dom_class}-body interp-body" markdown="1">#{line}</div>}
+    end
+  end
+
+
+  def process_text
+    processed_text = %{<div class="#{dom_class} interp" markdown="1">\n}
+    processed_text += %{<div class="#{dom_class}-heading interp-heading">#{caption}</div>\n}
+    divs = body_div
+    processed_text += divs.join("\n")
+    processed_text += %{</div>}
+    parent.append_result(processed_text)
+  end
+end
+
+module DefinitionDirective
+  include InterpolationDirective
+  def body_div
+    [%{<div class="#{dom_class}-body interp-body" markdown="1"><strong>#{params[:term].strip}:</strong> #{body}</div>}]
+  end
+
+  def dom_class
+    "definition"
+  end
+
+  def caption
+    "Definition"
+  end
+end
+
+module TrustDirective
+  include InterpolationDirective
+
+  def dom_class
+    "trust-me"
+  end
+
+  def caption
+    "Trust Me!"
+  end
+end
+
+module AuthorDirective
+  include InterpolationDirective
+
+  def dom_class
+    "author"
+  end
+
+  def caption
+    "Author's Note"
+  end
+end
+
+module DeprecationDirective
+  include InterpolationDirective
+
+  def dom_class
+    "deprecation"
+  end
+
+  def caption
+    "Deprecation Warning"
+  end
+end
+
+module ProTipDirective
+  include InterpolationDirective
+
+  def dom_class
+    "pro-tip"
+  end
+
+  def caption
+    "Pro Tip!"
+  end
+end
+
+module KansasDirective
+  include InterpolationDirective
+
+  def dom_class
+    "kansas"
+  end
+
+  def caption
+    "I don't think we're in Kansas anymore..."
+  end
+end
+
+module ZenDirective
+  include InterpolationDirective
+
+  def dom_class
+    "zen"
+  end
+
+  def caption
+    "The Zen of Ember"
+  end
+end
+
+module InThisDirective
+  include InterpolationDirective
+
+  def dom_class
+    "in-this"
+  end
+
+  def caption
+    "In This Chapter..."
+  end
+end
+
+
+
 module CoffeeScriptSidebarDirective
 
   def process_text
@@ -162,12 +327,23 @@ end
 
 module CodeDirective
 
+  def directory
+    p $settings
+    params[:dir] || $settings["code_dir"]
+  end
+
   def command
-    "cd #{params[:dir]}; git show #{params[:branch]}:#{params[:file]}"
+    p directory
+    "cd #{directory}; git show #{params[:branch]}:#{file_name}"
   end
 
   def recovered_code
     `#{command}`.strip
+  end
+
+  def file_name
+    return nil unless params[:file]
+    params[:file].gsub("-", "_")
   end
 
   def marker_match
@@ -194,7 +370,7 @@ module CodeDirective
   end
 
   def display_body
-    raw = if params[:file] then recovered_code else body end
+    raw = if file_name then recovered_code else body end
     if params[:marker]
       match = raw.match(%r{#{marker_match}(.*)#{marker_match}}m)
       if match
@@ -207,6 +383,16 @@ module CodeDirective
     if params[:elide]
       data = raw.match(%r{(.*)#{elide_match}(.*)#{elide_match}(.*)}m)
       return data[1] + "\n#{params[:elide_caption] || "..."}\n" + data[3]
+    end
+    if params[:line]
+      line =  raw.split("\n")[params[:line].to_i]
+      return fix_ulysses_weirdness(line)
+    end
+    if params[:lines]
+      first, last = params[:lines].split("-")
+      range = (first.to_i...last.to_i)
+      lines = raw.split("\n")[range].map { |line| fix_ulysses_weirdness(line) }
+      return lines.join("\n")
     end
     result = []
     raw.split("\n").each do |line|
@@ -222,24 +408,27 @@ module CodeDirective
     # p display_body
     # p "---"
     #p params
-    extension = (params[:type] || params[:file].split(".").last).strip
+    extension = params[:type]
+    extension = params[:file].split(".").last.strip if extension.nil? && params[:file]
     case extension
     when "rb", "ruby" then :ruby
     when "js" then :javascript
-    when "html", "mustache", "handlebars" then :html
+    when "html", "mustache", "handlebars", "hbs" then :html
     when "css" then :css
     when "yaml" then :yaml
     when "erb" then :erb
+    when "haml" then :haml
     else
       :text
     end
   end
 
   def process_text
-    header = %{<div class="code-filename">#{params[:file]} (Branch: #{params[:branch]})</div>}
+    header = %{<div class="code-filename">#{file_name} (Branch: #{params[:branch]})</div>}
     header = header.gsub("\\_", "_")
     processed_text = CodeRay.scan(display_body, language)
         .div(:line_numbers => nil)
+    # processed_text = Pygments.highlight(display_body, lexer: language)
     footer = %{<div class="code-caption">#{params[:caption]}</div>}
     parent.append_result(header) if params[:file]
     parent.append_result(processed_text)

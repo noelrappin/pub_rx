@@ -2,6 +2,16 @@ class Prince
 
   attr_accessor :exe_path, :style_sheets, :log_file
 
+  def self.process_directory(digit="")
+    princely = Prince.new
+    code_style = $settings["code_style"] || "default"
+    princely.add_style_sheets("output/#{digit}/styles.css", "layout/code_ray.css")
+    html_string = File.new("output/#{digit}/prince_index.html").read
+    File.open("output/#{digit}/#{$settings["filename"]}.pdf", 'w') do |f|
+      f.puts princely.pdf_from_string(html_string)
+    end
+  end
+
   # Initialize method
   #
   def initialize()
